@@ -1,92 +1,146 @@
+#Feodor and Isabella fused code
+#Uno version that has +2, Black Cards and Skip Turn
+#Assume there is only 2 players and that players won't cheat and look at other players' cards
+#You can add special cards later,
 import random
-#Viva mexico 
-def start_game():
-    # Set up Uno deck
-    colours = ("Red", "Yellow", "Green", "Blue")
-    ranks = list(range(1, 11))
-    special_cards = ("+2", "Block turn")
-    
-    deck = [(colour, rank) for colour in colours for rank in ranks] + [(colour, special_card) for colour in colours for special_card in special_cards]
 
-    # Shuffle the deck
+def start_game():
+    colors = ('Blue', 'Green', 'Red', 'Yellow')
+    ranks = ('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', "+2", "Block Turn")
+    #Special Black Cards
+    S_ranks = ("+4", "Change Color")
+    S_colors = ('Black','Black' )
+
+    deck = [(rank, color) for rank in ranks for color in colors]
+    special_deck = [(power, color) for power in S_ranks for color in S_colors for _ in range(2)]
+    deck = deck + special_deck
     random.shuffle(deck)
 
-    # Each player gets 7 cards
-    p1 = [deck.pop(0) for _ in range(7)]
-    p2 = [deck.pop(0) for _ in range(7)]
+    p1 = [deck.pop() for _ in range(7)]
+    p2 = [deck.pop() for _ in range(7)]
 
-    # Central card
-    central_card = deck.pop(0)
+    center_card = deck.pop()
+    while center_card[1] == "Black":
+        deck.append(center_card)
+        center_card = deck.pop()
+    turn = random.randint(1, 2)
+    play_turn(p1, p2, deck, center_card, turn)
 
-    # We start with player 1's turn (0 = player 1, 1 = player 2)
-    main_loop(p1, p2, deck, central_card, 0)
+def play_turn(p1, p2, deck, center_card, turn):
+    #Assign the turns cards
+    #REREAD LATER, does Python attribute 'cards' as a pointer to p1 or p2?
+    while True:
+        if turn == 1:
+            cards = p1
+            opposite = p2
 
-def main_loop(p1, p2, deck, central_card, whose_turn):
-    while len(p1) > 0 and len(p2) > 0:
-        if whose_turn == 0:
-            # Player 1's turn
-            print(f"\nPlayer 1's turn, here is your hand: {p1}")
-            print(f"Central card is: {central_card}")
+            print(f"\n*The center card is: {center_card}")
+            print(f"  Player {turn}, your cards are: {cards}")
 
-            # Give the user a choice, play a card or draw a card
-            ans = int(input("You have a choice, (0) draw or (1) play: "))
+            #Playable cards
+            available_cards = playable_cards(cards, center_card)
+            print(f"  Your playable cards are: {available_cards}")
 
-            # Handle playing a card
-            if ans == 1:
-                player_choice = int(input("Which card to play (1-based index)? ")) - 1
-                if 0 <= player_choice < len(p1):
-                    valid = valid_play(central_card, p1[player_choice])
-                    if valid:
-                        card_to_play = p1.pop(player_choice)
-                        central_card = card_to_play
-                        print(f"Player 1 played: {card_to_play}")
+            #Check if no cards are playable
+            if len(available_cards) == 0:
+                print("  No cards can be played, you must DRAW")
+                cards.append(deck.pop())
+            else:
+                choice = int(input("  Do you want to PLAY A CARD(0) or DRAW A CARD(1)? "))
+                if choice == 1:
+                    if len(deck) == 0:
+                        #Recheck later, might not be necessary or there might be a better way to do this
+                        print("  Since the deck is empty, it will be reshuffled")
+                        #reshuffle_deck(deck, center_card)
+                    cards.append(deck.pop())
+                elif choice == 0:
+                    card_choice = int(input(f"  Pick which card to play through its place in the order, starting from 1: "))
+                    if 1 <= card_choice <= len(available_cards):
+                        deck.append(center_card)
+                        center_card = cards.pop(cards.index(available_cards[card_choice - 1]))
+                        if len(cards) == 0:
+                            print(f"\n  Player {turn} wins!")
+                            return
+                        if len(cards) == 1:
+                            print("\nUNO!\n")
 
-                        # Handle special cards
-                        if card_to_play[1] == "+2":
-                            # Player 2 draws 2 cards
-                            print("Player 2 must draw 2 cards!")
-                            for _ in range(2):
-                                if len(deck) > 0:
-                                    p2.append(deck.pop(0))
-                                else:
-                                    print("The deck is empty, no more cards to draw.")
-                        elif card_to_play[1] == "Block turn":
-                            print("Player 2's turn is blocked!")
-                            continue  # Skip Player 2's turn
+                        #SPECIAL CARDS:
+                        #Code to for "+2"
+                        if center_card[0] == "+2":
+                            opposite.extend(deck.pop() for _ in range(2))
 
-                        if len(p1) == 0:
-                            print("Player 1 wins!")
-                            exit()
-                    else:
-                        print("Invalid card choice.")
-                else:
-                    print("Invalid card index.")
-            elif ans == 0:
-                # Handle drawing a card
-                if len(deck) > 0:
-                    drawn_card = deck.pop(0)
-                    p1.append(drawn_card)
-                    print(f"Player 1 drew: {drawn_card}")
-                else:
-                    print("The deck is empty, no more cards to draw.")
+                        #Code to for "+4"
+                        elif center_card[0] == "+4":
+                            opposite.extend(deck.pop() for _ in range(4))
+                            requested_color = input("  What color do you want to change to: Red, Green, Blue, or Yellow? ").capitalize()
+                            while requested_color not in ['Red', 'Green', 'Blue', 'Yellow']:
+                                requested_color = input("  Only choose from Red, Green, Blue, or Yellow: ").capitalize()
+                            center_card = ("+4", requested_color)
+                            print(f"  The new color is {requested_color}")
 
+                        #Code for "Block Turn
+                        elif center_card[0] == "Block Turn":
+                            continue
+
+                        #Code for Change Color
+                        elif center_card[0] == "Change Color":
+                            requested_color = input("  What color do you want to change to: Red, Green, Blue, or Yellow? ").capitalize()
+                            while requested_color not in ['Red', 'Green', 'Blue', 'Yellow']:
+                                requested_color = input("  Only choose from Red, Green, Blue, or Yellow: ").capitalize()
+                            center_card = ("Change Color", requested_color)
+                            print(f"  The new color is {requested_color}")
         else:
-            # AI (Player 2) turn logic could go here
-            print("AI's turn (not yet implemented)")
-            # You can add AI logic for Player 2 here
+            cards = p2
+            opposite = p1
 
-        # Change turns
-        whose_turn = (whose_turn + 1) % 2
+            #Playable cards
+            available_cards = playable_cards(cards, center_card)
 
-    # End of game conditions
-    if len(p1) == 0:
-        print("Player 1 wins!")
-    elif len(p2) == 0:
-        print("Player 2 wins!")
+            #Check if no cards are playable
+            if len(available_cards) == 0:
+                print("\n*No cards can be played, the AI must DRAW")
+                cards.append(deck.pop())
+            else:
+                deck.append(center_card)
+                print(f"\n*The AI played {available_cards[0]}")
+                center_card = cards.pop(cards.index(available_cards[0]))
+                if len(cards) == 0:
+                    print(f"\n  The AI wins!")
+                    return
+                if len(cards) == 1:
+                    print("\nUNO for AI!")
+                #SPECIAL CARDS:
+                #Code to for "+2"
+                if center_card[0] == "+2":
+                    opposite.extend(deck.pop() for _ in range(2))
+                #Code to for "+4"
+                elif center_card[0] == "+4":
+                    opposite.extend(deck.pop() for _ in range(4))
+                    requested_color = random.choice(["Red", "Green", "Blue", "Yellow"])
+                    center_card = ("+4", requested_color)
+                    print(f"  The new color is {requested_color}")
+                #Code for "Block Turn
+                elif center_card[0] == "Block Turn":
+                    continue
+                #Code for Change Color
+                elif center_card[0] == "Change Color":
+                    requested_color = random.choice(["Red", "Green", "Blue", "Yellow"])
+                    center_card = ("Change Color", requested_color)
+                    print(f"  The new color is {requested_color}")
+            
+        #Change turns
+        turn = 1 if turn == 2 else 2
 
-# Validate if two cards can be played on top of each other
-def valid_play(card1, card2):
-    return card1[0] == card2[0] or card1[1] == card2[1]
+#Returns a list of all playable cards
+def playable_cards(cards, center_card):
+    return [card for card in cards if card[0] == center_card[0] or card[1] == center_card[1] or card[1] == "Black"]
 
+#RESHUFFLE
+#Commented out because not yet sure if it works well
+#def reshuffle_deck(deck, center_card):
+    #deck.append(center_card)
+    #random.shuffle(deck)
+
+#START THE GAME HERE
 start_game()
 
